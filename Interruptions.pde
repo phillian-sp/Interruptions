@@ -1,4 +1,4 @@
-final int SIDE_LEN = 8;
+final int SIDE_LEN = 7;
 final int DIS_BETWEEN = 12;
 final int SIDE_MARGIN = 40;
 final int TOP_MARGIN = 40;
