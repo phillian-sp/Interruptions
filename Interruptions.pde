@@ -1,111 +1,184 @@
-final int SIDE_LEN = 7;
+/* Author:   Phillip Miao
+   Date:     July 7, 2020
+   
+   Abstract: This sketch produces generative art that imitates the piece
+             Interruptions - Vera Molnár, 1968/69
+*/
+
+// Side length of the lines
+final int SIDE_LEN = 8;
+
+// distance between 2 lines
 final int DIS_BETWEEN = 12;
+
+
+
+//Side margin length
 final int SIDE_MARGIN = 40;
+
+//Top and bottom margin length
 final int TOP_MARGIN = 40;
+
+//The possibility for the line to be horizontal
 final float HRO_POSS = 0.3;
-//                             0  1  2  3    4    5  6  7  8
-final float[] INVIS_POSS_TABLE = {0, 0, 0, 0.3, 1, 1, 1, 1, 1};
-// from dark to light 
-final int DIV_COLOR = #e6622e;
-//final int[] COLOR_TABLE = {#000000, #451d0d, #8a3a1b, #cf5829, #e6622e, #e87142, #eb8157, #ed916c, #f0a081, #f2b096};
-//                         0        1        2        3        4        5        6        7        8        9
-final int[] COLOR_TABLE = {#000000, #451d0d, #8a3a1b, #cf5829, #e6622e, #eb8157, #f0a081, #f5c0ab, #f7cfc0, #fadfd5};
+
+// possibility table for determining if the line is visible
+// index: the number of neighbors
+final float[] INVIS_POSS_TABLE = {0, 0, 0, 0.45, 1, 1, 1, 1, 1};
+
+// the width of border to consider when generating color for each line 
 final int LEN_AROUND_CORNER = 2;
+
+// the cut of division for distribution of color
+final int DIV_NUM2 = 8;
+
+// Brightness division for HSB 
+final int BRIGHT_DIV = DIV_NUM2 + 2;
+
+// Saturation division for HSB 
+final float SAT_DIV = BRIGHT_DIV*BRIGHT_DIV;
+
+final float STROKE_WEIGHT = 1.5;
+
+// The possility of visibility for the inital assignment
+final float INIT_VISI_POSS = 0.9;
+
+
+// number of segments horizontally
+int xNum;
+// number of segments vertically
+int yNum;
+
+// turns of colors
+final float TURNS = 1;
+
+// Hue division for HSB 
+float hueDiv;
+
+
 
 void setup()
 {
     size(750,750);
-    background(255);
+    
+    // initalize xNum and yNum
+    xNum = (int)((width - SIDE_MARGIN * 2) / DIS_BETWEEN) + 1;
+    yNum = (int)((height - TOP_MARGIN * 2) / DIS_BETWEEN) + 1;
+    
+    hueDiv = (xNum+yNum - 2) / TURNS;
+    
+    colorMode(HSB, (xNum+yNum - 2) / TURNS, SAT_DIV, BRIGHT_DIV);
+    strokeWeight(STROKE_WEIGHT);
 }
 
 void draw()
 {
+    // clear the board
     clear();
-    background(255);
-    int xNum = (int)((width - SIDE_MARGIN * 2) / DIS_BETWEEN) + 1;
-    int yNum = (int)((height - TOP_MARGIN * 2) / DIS_BETWEEN) + 1;
+    background(0,0,0);
     
     // 0 means visible 
     // 1 means invisible
-    int[][] isVisible = new int[xNum + LEN_AROUND_CORNER*2][yNum + LEN_AROUND_CORNER*2];
+    int[][] isInvisible = new int[xNum + LEN_AROUND_CORNER*2][yNum + LEN_AROUND_CORNER*2];
     
+    // Initially assign every cell a visibility
     for(int x = SIDE_MARGIN; x <= width - SIDE_MARGIN; x+= DIS_BETWEEN)
     {
         int xindex = (x - SIDE_MARGIN) / DIS_BETWEEN + LEN_AROUND_CORNER; 
         for(int y = TOP_MARGIN; y <= height - TOP_MARGIN; y+= DIS_BETWEEN)
         {
             int yindex = (y - TOP_MARGIN) / DIS_BETWEEN + LEN_AROUND_CORNER;
-            if(random(0,1) > 0.9) {
-                isVisible[xindex][yindex] = 1;
+            if(random(0,1) > INIT_VISI_POSS) {
+                isInvisible[xindex][yindex] = 1;
             }
         }
     }
-    for(int i = 0; i < 1; i++)
+    
+    // Base on the initial assignment, use INVIS_POSS_TABLE to redo the assignment to
+    // make sure that invisible lines are in blocks, not scattered
+    for(int x = SIDE_MARGIN; x <= width - SIDE_MARGIN; x+= DIS_BETWEEN)
     {
-        for(int x = SIDE_MARGIN; x <= width - SIDE_MARGIN; x+= DIS_BETWEEN)
+        
+        int xindex = (x - SIDE_MARGIN) / DIS_BETWEEN + LEN_AROUND_CORNER; 
+        for(int y = TOP_MARGIN; y <= height - TOP_MARGIN; y+= DIS_BETWEEN)
         {
-            int xindex = (x - SIDE_MARGIN) / DIS_BETWEEN + LEN_AROUND_CORNER; 
-            for(int y = TOP_MARGIN; y <= height - TOP_MARGIN; y+= DIS_BETWEEN)
-            {
-                int yindex = (y - TOP_MARGIN) / DIS_BETWEEN + LEN_AROUND_CORNER;
-                int neigs = numOfInvisNeig(isVisible, xindex, yindex);
-                if(random(0,1) < INVIS_POSS_TABLE[neigs]) {
-                    isVisible[xindex][yindex] = 1;
-                }
+            int yindex = (y - TOP_MARGIN) / DIS_BETWEEN + LEN_AROUND_CORNER;
+            int neigs = numOfInvisNeig(isInvisible, xindex, yindex);
+            if(random(0,1) < INVIS_POSS_TABLE[neigs]) {
+                isInvisible[xindex][yindex] = 1;
             }
         }
     }
     
-    
+    // main loop to paint the board
     for(int x = SIDE_MARGIN; x <= width - SIDE_MARGIN; x += DIS_BETWEEN)
     {
         int xindex = (x - SIDE_MARGIN) / DIS_BETWEEN + LEN_AROUND_CORNER; 
         for(int y = TOP_MARGIN; y <= height - TOP_MARGIN; y += DIS_BETWEEN)
         {
             int yindex = (y - TOP_MARGIN) / DIS_BETWEEN + LEN_AROUND_CORNER;
-            if(isVisible[xindex][yindex] == 1) {
-                //stroke(255,0,0);
-                
+            
+            // if not visible 
+            if(isInvisible[xindex][yindex] == 1) {
                 continue;
             }
-            //else{
-                int neigs = numOfInvisNeigColor(isVisible, xindex, yindex);
-                stroke(coFromNeig(neigs));
-            //}
+            
+            // get the number of invisible neighers 
+            int neigs = numOfInvisNeigColor(isInvisible, xindex, yindex);
+            
+            // set the stroke color
+            stroke(coFromNeig(xindex + yindex, neigs));
+            
+            //*** if want to see the numbers on the board instead of lines
+            //fill(coFromNeig(xindex + yindex, neigs));
             
             // main drawing algorithm
             pushMatrix();
             translate(x,y);
+            
+            // rotate from -PI/2 to PI/2 including HRO_POSS into considering as well
             float randomAngle = random(0,PI/2);
             if(random(0,1) < HRO_POSS)
                 randomAngle = -randomAngle;
             rotate(randomAngle);
+            
+            //*** if want to see the numbers on the board instead of lines
             //text(neigs,0,0);
             line(-SIDE_LEN, -SIDE_LEN, SIDE_LEN, SIDE_LEN);
             popMatrix();
         }
     }
-    System.out.println("Finished");
+    
+    // Stop Looping
     noLoop();
 }
 
-final int DIV_NUM = 8;
-
-color coFromNeig(int neigs)
+/**
+ * This function takes in two parameters hue and neigs and returns the corresponding color
+ *
+ * @param     hue    the hue value for HSB
+ *            neigs  the number of neighbors around
+ * @return    color  color corresponding to the 2 parameters
+ */
+color coFromNeig(int hue, int neigs)
 {
     
-    if(neigs <= DIV_NUM) 
-        return color(COLOR_TABLE[neigs]);
+    if(neigs <= DIV_NUM2)
+        return color(hue % hueDiv, SAT_DIV - (BRIGHT_DIV-neigs) * (BRIGHT_DIV - neigs), BRIGHT_DIV);
     else
-        return color(COLOR_TABLE[9]);
+        return color(hue % hueDiv, SAT_DIV, BRIGHT_DIV);
 }
 
-
-//color cFromNeig(int neigs)
-//{
-//    return color(light[0] + (dark[0] - light[0]) / 9 * (9-neigs), light[1] + (dark[1] - light[1]) / 9 * (9-neigs), light[2] + (dark[2] - light[2]) / 9 * (9-neigs));
-//}
-
+/**
+ * This function takes in three parameters isVisible, x and y and returns the number of invisible neighbors near the line(x,y)
+ *
+ * Note: boarder width is 1
+ *
+ * @param     isVisible    an array indicating the visibility of the graph
+ *            x            x-coordinate
+ *            y            y-coordinate
+ * @return    int          the number of invisible neighbors near the line(x,y)
+ */
 int numOfInvisNeig(int[][] isVisible, int x, int y)
 {
     int count = 0;
@@ -120,6 +193,16 @@ int numOfInvisNeig(int[][] isVisible, int x, int y)
     return count;
 }
 
+/**
+ * This function takes in three parameters isVisible, x and y and returns the number of invisible neighbors near the line(x,y)
+ *
+ * Note: boarder width is LEN_AROUND_CORNER
+ *
+ * @param     isVisible    an array indicating the visibility of the graph
+ *            x            x-coordinate
+ *            y            y-coordinate
+ * @return    int          the number of invisible neighbors near the line(x,y)
+ */
 int numOfInvisNeigColor(int[][] isVisible, int x, int y)
 {
     int count = 0;
@@ -133,9 +216,11 @@ int numOfInvisNeigColor(int[][] isVisible, int x, int y)
     }
     return count;
 }
-    
 
 void keyPressed()
 {
-    loop();
+    if(key == ' ')
+    {
+        loop();
+    }
 }
